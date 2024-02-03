@@ -1,40 +1,10 @@
 use std::collections::HashMap;
 
-pub enum Opcode {
-    // >
-    SHR = 0x3e,
-    // <
-    SHL = 0x3c,
-    // +
-    ADD = 0x2b,
-    // -
-    SUB = 0x2d,
-    // .
-    OUTPUT = 0x2e,
-    // ,
-    INPUT = 0x2c,
-    // [
-    LR = 0x5b,
-    // ]
-    LB = 0x5d,
-}
+use self::opcode::Opcode;
 
-impl From<u8> for Opcode {
-    fn from(value: u8) -> Self {
-        match value {
-            0x3e => Opcode::SHR,
-            0x3c => Opcode::SHL,
-            0x2b => Opcode::ADD,
-            0x2d => Opcode::SUB,
-            0x2e => Opcode::OUTPUT,
-            0x2c => Opcode::INPUT,
-            0x5b => Opcode::LR,
-            0x5d => Opcode::LB,
-            _ => unreachable!(),
-        }
-    }
-}
+pub mod opcode;
 
+#[derive(Debug)]
 pub struct Lexer {
     // instructions
     pub ins: Vec<Opcode>,
@@ -47,5 +17,31 @@ impl Lexer {
             ins: vec![],
             jump_table: HashMap::new(),
         }
+    }
+}
+
+impl From<&[u8]> for Lexer {
+    fn from(value: &[u8]) -> Self {
+        let ins = value
+            .iter()
+            .filter_map(|op| Opcode::try_from(*op).ok())
+            .collect::<Vec<_>>();
+
+        let mut jump_table = HashMap::new();
+        let mut jump_stack = vec![];
+
+        for (pos, op) in value.iter().enumerate() {
+            match op {
+                0x5b => jump_stack.push(pos),
+                0x5d => {
+                    let start = jump_stack.pop().expect("Unmatched ]");
+                    jump_table.insert(start, pos);
+                    jump_table.insert(pos, start);
+                }
+                _ => {}
+            }
+        }
+
+        Lexer { ins, jump_table }
     }
 }
