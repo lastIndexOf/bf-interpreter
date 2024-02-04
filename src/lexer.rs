@@ -1,9 +1,13 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{BufReader, Read},
+};
 
 use self::opcode::Opcode;
 
 pub mod opcode;
 
+// TODO: add multiple input support
 #[derive(Debug)]
 pub struct Lexer {
     // instructions
@@ -20,9 +24,16 @@ impl Lexer {
     }
 }
 
-impl From<&[u8]> for Lexer {
-    fn from(value: &[u8]) -> Self {
-        let ins = value
+impl<T: Read> From<T> for Lexer {
+    fn from(value: T) -> Self {
+        let mut reader = BufReader::new(value);
+
+        let mut buf = vec![];
+        reader
+            .read_to_end(&mut buf)
+            .expect("Failed to read source code");
+
+        let ins = buf
             .iter()
             .filter_map(|op| Opcode::try_from(*op).ok())
             .collect::<Vec<_>>();
@@ -30,10 +41,10 @@ impl From<&[u8]> for Lexer {
         let mut jump_table = HashMap::new();
         let mut jump_stack = vec![];
 
-        for (pos, op) in value.iter().enumerate() {
+        for (pos, op) in ins.iter().enumerate() {
             match op {
-                0x5b => jump_stack.push(pos),
-                0x5d => {
+                &Opcode::LR => jump_stack.push(pos),
+                &Opcode::LB => {
                     let start = jump_stack.pop().expect("Unmatched ]");
                     jump_table.insert(start, pos);
                     jump_table.insert(pos, start);
