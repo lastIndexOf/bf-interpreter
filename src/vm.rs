@@ -3,7 +3,9 @@ use std::io::{Read, Write};
 use crate::lexer::{opcode::Opcode, Lexer};
 
 pub struct VirtualMachine {
+    // program counter
     pc: usize,
+    // stack pointer
     sp: usize,
     pub stack: Vec<u8>,
 }
@@ -46,9 +48,9 @@ impl VirtualMachine {
                     .write_all(&[self.stack[self.sp]])
                     .expect("Failed to write"),
                 &Opcode::INPUT => {
-                    let mut input = vec![];
+                    let mut input = [0; 1];
                     std::io::stdin()
-                        .read_to_end(&mut input)
+                        .read_exact(&mut input)
                         .expect("Failed to read");
                     self.stack[self.sp] = input[0];
                 }
