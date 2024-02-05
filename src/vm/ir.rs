@@ -42,9 +42,13 @@ impl IrVM for VirtualMachine {
                 &Bytecode::SUB(val) => {
                     self.stack[self.sp] = self.stack[self.sp].overflowing_sub(val).0;
                 }
-                &Bytecode::OUTPUT => std::io::stdout()
-                    .write_all(&[self.stack[self.sp]])
-                    .expect("Failed to write"),
+                &Bytecode::OUTPUT => {
+                    if !cfg!(feature = "no_output") {
+                        std::io::stdout()
+                            .write_all(&[self.stack[self.sp]])
+                            .expect("Failed to write")
+                    }
+                }
                 &Bytecode::INPUT => {
                     let mut input = [0; 1];
                     std::io::stdin()

@@ -54,9 +54,11 @@ impl VM for VirtualMachine {
                     self.stack[self.sp] = self.stack[self.sp].overflowing_sub(1).0;
                 }
                 &Opcode::OUTPUT => {
-                    std::io::stdout()
-                        .write_all(&[self.stack[self.sp]])
-                        .expect("Failed to write")
+                    if !cfg!(feature = "no_output") {
+                        std::io::stdout()
+                            .write_all(&[self.stack[self.sp]])
+                            .expect("Failed to write")
+                    }
                 }
                 &Opcode::INPUT => {
                     let mut input = [0; 1];
