@@ -7,6 +7,9 @@ use self::opcode::Opcode;
 
 pub mod opcode;
 
+#[cfg(feature = "ir")]
+pub mod bytecode;
+
 // TODO: add multiple input support
 #[derive(Debug)]
 pub struct Lexer {

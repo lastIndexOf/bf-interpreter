@@ -1,6 +1,6 @@
 // use brainfuck_interpreter::repl::repl;
 
-use brainfuck_interpreter::{lexer::Lexer, vm::VirtualMachine};
+use brainfuck_interpreter::{lexer::Lexer, vm::vm::VirtualMachine};
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect::<Vec<_>>();
