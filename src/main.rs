@@ -1,6 +1,9 @@
 // use brainfuck_interpreter::repl::repl;
 
-use brainfuck_interpreter::{lexer::Lexer, vm::vm::VirtualMachine};
+use brainfuck_interpreter::{
+    lexer::Lexer,
+    vm::{ir::IrVM, VirtualMachine, VM},
+};
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect::<Vec<_>>();
@@ -9,7 +12,8 @@ fn main() -> anyhow::Result<()> {
     let lexer = Lexer::from(std::fs::File::open(filename)?);
     let mut vm = VirtualMachine::new();
 
-    vm.run(lexer);
+    vm.run_with_ir(lexer);
+    // vm.run(lexer);
 
     // repl();
 
