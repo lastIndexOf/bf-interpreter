@@ -2,8 +2,14 @@ use std::io::{Read, Write};
 
 use crate::lexer::{opcode::Opcode, Lexer};
 
+#[cfg(all(feature = "ir", feature = "jit"))]
+compile_error!("Cannot enable both features `ir` and `jit` at the same time");
+
 #[cfg(feature = "ir")]
 pub mod ir;
+
+#[cfg(feature = "jit")]
+pub mod jit;
 
 pub trait VM {
     fn run(&mut self, lexer: Lexer);

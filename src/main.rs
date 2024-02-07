@@ -2,7 +2,7 @@
 
 use brainfuck_interpreter::{
     lexer::Lexer,
-    vm::{ir::IrVM, VirtualMachine, VM},
+    vm::{jit::JitVM, VirtualMachine, VM},
 };
 
 fn main() -> anyhow::Result<()> {
@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     let lexer = Lexer::from(std::fs::File::open(filename)?);
     let mut vm = VirtualMachine::new();
 
-    vm.run_with_ir(lexer);
+    vm.run_with_jit(lexer);
     // vm.run(lexer);
 
     // repl();

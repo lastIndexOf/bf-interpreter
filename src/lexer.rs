@@ -7,7 +7,7 @@ use self::opcode::Opcode;
 
 pub mod opcode;
 
-#[cfg(feature = "ir")]
+#[cfg(any(feature = "ir", feature = "jit"))]
 pub mod bytecode;
 
 // TODO: add multiple input support
