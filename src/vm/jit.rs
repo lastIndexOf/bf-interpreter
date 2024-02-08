@@ -21,7 +21,6 @@ impl JitVM for VirtualMachine {
         let mut jump_tables = vec![];
 
         let mut ops = dynasmrt::aarch64::Assembler::new()?;
-        let entry_point = ops.offset();
 
         // ARM64(aarch64) calling convention
         // https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
@@ -29,9 +28,18 @@ impl JitVM for VirtualMachine {
         dynasm!(ops
             ; .arch aarch64
             // move x0 (caller first param) to x20 (general purpose register)
-            ; mov x20, x0
             ; ->output_char:
             ; .qword output_char as _
+        );
+
+        let entry_point = ops.offset();
+
+        dynasm!(ops
+            ; .arch aarch64
+            ; mov x23, x20
+            ; mov x24, x21
+            ; mov x25, x22
+            ; mov x20, x0
         );
 
         while self.pc < ins.len() {
@@ -39,39 +47,72 @@ impl JitVM for VirtualMachine {
 
             match instruct {
                 &Bytecode::SHR(val) => {
+                    // let lower_val = (val & 0xffff_ffff) as u32;
+                    // let upper_val = ((val >> 32) & 0xffff_ffff) as u32;
+
+                    // dynasm!(ops
+                    //     ; .arch aarch64
+                    //     ; mov x21, lower_val as u64
+                    //     ; movk x21, upper_val, lsl 32
+                    //     ; sub x20, x20, x21
+                    // )
+
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr w21, val as u32
-                       ; sub x20, x20, w21
+                       ; mov x21, val as u64
+                       ; sub x20, x20, x21
                     )
                 }
                 &Bytecode::SHL(val) => {
+                    // let lower_val = (val & 0xffff_ffff) as u32;
+                    // let upper_val = ((val >> 32) & 0xffff_ffff) as u32;
+
+                    // dynasm!(ops
+                    //     ; .arch aarch64
+                    //     ; mov x21, lower_val as u64
+                    //     ; movk x21, upper_val, lsl 32
+                    //     ; add x20, x20, x21
+                    // )
+
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr w21, val as u32
-                       ; add x20, x20, w21
+                       ; mov x21, val as u64
+                       ; add x20, x20, x21
                     )
                 }
                 &Bytecode::ADD(val) => {
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr w21, val as i8
-                       ; ldr w22, [x20]
-                       ; add w22, w22, w21
-                       ; str w22, [x20]
+                       ; ldr x21, val as i8
+                       ; ldr x22, [x20]
+                       ; add x22, x22, x21
+                       ; str x22, [x20]
                     )
                 }
                 &Bytecode::SUB(val) => {
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr w21, val as i8
-                       ; ldr w22, [x20]
-                       ; sub w22, w22, w21
-                       ; str w22, [x20]
+                       ; ldr x21, val as i8
+                       ; ldr x22, [x20]
+                       ; sub x22, x22, x21
+                       ; str x22, [x20]
                     )
                 }
 
-                &Bytecode::OUTPUT => if !cfg!(feature = "no_output") {},
+                &Bytecode::OUTPUT => {
+                    if !cfg!(feature = "no_output") {
+                        dynasm!(ops
+                            ; .arch aarch64
+                            ; mov x0, 0 
+                            ; ldrb w0, [x20]
+                            ; ldr x9, ->output_char
+                            ; str x30, [sp, #-16]!
+                            ; blr x9
+                            ; ldr x30, [sp], #16
+                            ; ret
+                        );
+                    }
+                }
                 &Bytecode::INPUT => {}
                 &Bytecode::LR(_) => {
                     let l = ops.new_dynamic_label();
@@ -79,28 +120,22 @@ impl JitVM for VirtualMachine {
                     jump_tables.push((l, r));
                     dynasm!(ops
                         ; .arch aarch64
-                        ; ldrb w21, [x20]
-                        // x21 == 0
-                        ; cbz w21, => r
-                        // x21 != 0
-                        ; => l
+                        ; ldrb w9, [x20]
+                        ; cbz w9, => r
+                        ;=>l
                     )
                 }
-                &Bytecode::LB(_) => {
-                    match jump_tables.pop() {
-                        Some((l, r)) => {
-                            dynasm!(ops
-                                ; .arch aarch64
-                                ; ldrb w21, [x20]
-                                // x21 != 0
-                                ; cbnz w21, => l
-                                // x21 == 0
-                                ; => r
-                            )
-                        }
-                        None => return Err(anyhow!("Unmatched ]")),
+                &Bytecode::LB(_) => match jump_tables.pop() {
+                    Some((l, r)) => {
+                        dynasm!(ops
+                            ; .arch aarch64
+                            ; ldrb w9, [x20]
+                            ; cbnz w9, => l
+                            ;=>r
+                        )
                     }
-                }
+                    None => return Err(anyhow!("Unmatched ]")),
+                },
             }
 
             self.pc += 1;
@@ -108,6 +143,9 @@ impl JitVM for VirtualMachine {
 
         dynasm!(ops
             ; .arch aarch64
+            ; mov x20, x23
+            ; mov x21, x24
+            ; mov x22, x25
             ; ret
         );
 
