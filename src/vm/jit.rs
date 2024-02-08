@@ -33,11 +33,14 @@ impl JitVM for VirtualMachine {
 
         let entry_point = ops.offset();
 
+        // aarch64 架构要求所有地址都保持 16 字节对齐
+        // 哪怕 xn 寄存器只保留 8 字节的数据，也得遵守这个约定
         dynasm!(ops
             ; .arch aarch64
-            ; str x30, [sp, #-16]!
-            ; stp x0, x1, [sp, #-16]!
-            ; stp x2, x3, [sp, #-16]!
+            // ; str x30, [sp, #-16]!
+            // ; stp x0, x1, [sp, #-16]!
+            // ; stp x2, x3, [sp, #-16]!
+            ; stp x30, x0, [sp, #-16]!
         );
 
         while self.pc < ins.len() {
@@ -77,6 +80,8 @@ impl JitVM for VirtualMachine {
                 }
                 &Bytecode::OUTPUT => {
                     if !cfg!(feature = "no_output") {
+                        // aarch64 架构要求所有地址都保持 16 字节对齐
+                        // 哪怕 xn 寄存器只保留 8 字节的数据，也得遵守这个约定
                         dynasm!(ops
                             ; str x0, [sp, #-16]!
                             ; ldr x9, ->output_char
@@ -117,9 +122,10 @@ impl JitVM for VirtualMachine {
 
         dynasm!(ops
             ; .arch aarch64
-            ; mov x0, 0
-            ; add sp, sp, #32
-            ; ldr x30, [sp], #16
+            // ; mov x0, 0
+            // ; add sp, sp, #32
+            // ; ldr x30, [sp], #16
+            ; ldp x30, x0, [sp], #16
             ; ret
         );
 
