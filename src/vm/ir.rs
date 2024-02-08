@@ -1,8 +1,8 @@
+/// IR can run with bytecode
 use std::io::{Read, Write};
 
-use crate::lexer::{bytecode::Bytecode, Lexer};
-
 use super::VirtualMachine;
+use crate::lexer::{bytecode::Bytecode, Lexer};
 
 pub trait IrVM {
     fn run_with_ir(&mut self, lexer: Lexer);

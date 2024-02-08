@@ -8,6 +8,26 @@ fn print_hello_world_by_jit() {
     let mut ops = dynasmrt::aarch64::Assembler::new().unwrap();
     let string = "print by aarch64 asm: Hello World\n";
 
+    // ⬇️ x64
+    // dynasm!(ops
+    //     ; .arch x64
+    //     ; ->hello:
+    //     ; .bytes string.as_bytes()
+    // );
+
+    // let hello = ops.offset();
+    // dynasm!(ops
+    //     ; .arch x64
+    //     ; lea rcx, [->hello]
+    //     ; xor edx, edx
+    //     ; mov dl, BYTE string.len() as _
+    //     ; mov rax, QWORD print as _
+    //     ; sub rsp, BYTE 0x28
+    //     ; call rax
+    //     ; add rsp, BYTE 0x28
+    //     ; ret
+    // );
+
     dynasm!(ops
         ; .arch aarch64
         ; ->hello:

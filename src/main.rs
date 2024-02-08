@@ -13,6 +13,7 @@ fn main() -> anyhow::Result<()> {
     let mut vm = VirtualMachine::new();
 
     vm.run_with_jit(lexer);
+    // vm.run_with_ir(lexer);
     // vm.run(lexer);
 
     // repl();
