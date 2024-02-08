@@ -10,8 +10,8 @@ pub trait JitVM {
     fn run_with_jit(&mut self, lexer: Lexer) -> anyhow::Result<()>;
 }
 
-unsafe extern "C" fn output_char(char: u8) {
-    std::io::stdout().write_all(&[char]).unwrap()
+unsafe extern "C" fn output_char(word: *const u8) {
+    std::io::stdout().write_all(&[unsafe { *word }]).unwrap()
 }
 
 impl JitVM for VirtualMachine {
@@ -27,7 +27,6 @@ impl JitVM for VirtualMachine {
 
         dynasm!(ops
             ; .arch aarch64
-            // move x0 (caller first param) to x20 (general purpose register)
             ; ->output_char:
             ; .qword output_char as _
         );
@@ -36,10 +35,9 @@ impl JitVM for VirtualMachine {
 
         dynasm!(ops
             ; .arch aarch64
-            ; mov x23, x20
-            ; mov x24, x21
-            ; mov x25, x22
-            ; mov x20, x0
+            ; str x30, [sp, #-16]!
+            ; stp x0, x1, [sp, #-16]!
+            ; stp x2, x3, [sp, #-16]!
         );
 
         while self.pc < ins.len() {
@@ -47,80 +45,64 @@ impl JitVM for VirtualMachine {
 
             match instruct {
                 &Bytecode::SHR(val) => {
-                    // let lower_val = (val & 0xffff_ffff) as u32;
-                    // let upper_val = ((val >> 32) & 0xffff_ffff) as u32;
-
-                    // dynasm!(ops
-                    //     ; .arch aarch64
-                    //     ; mov x21, lower_val as u64
-                    //     ; movk x21, upper_val, lsl 32
-                    //     ; sub x20, x20, x21
-                    // )
-
                     dynasm!(ops
                        ; .arch aarch64
-                       ; mov x21, val as u64
-                       ; sub x20, x20, x21
+                       ; sub x0, x0, val as u32
                     )
                 }
                 &Bytecode::SHL(val) => {
-                    // let lower_val = (val & 0xffff_ffff) as u32;
-                    // let upper_val = ((val >> 32) & 0xffff_ffff) as u32;
-
-                    // dynasm!(ops
-                    //     ; .arch aarch64
-                    //     ; mov x21, lower_val as u64
-                    //     ; movk x21, upper_val, lsl 32
-                    //     ; add x20, x20, x21
-                    // )
-
                     dynasm!(ops
                        ; .arch aarch64
-                       ; mov x21, val as u64
-                       ; add x20, x20, x21
+                       ; add x0, x0, val as u32
                     )
                 }
                 &Bytecode::ADD(val) => {
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr x21, val as i8
-                       ; ldr x22, [x20]
-                       ; add x22, x22, x21
-                       ; str x22, [x20]
+                       ; ldrb w9, [x0]
+                       ; add w9, w9, val as u32
+                       ; strb w9, [x0]
                     )
                 }
                 &Bytecode::SUB(val) => {
                     dynasm!(ops
                        ; .arch aarch64
-                       ; ldr x21, val as i8
-                       ; ldr x22, [x20]
-                       ; sub x22, x22, x21
-                       ; str x22, [x20]
+                       ; ldrb w9, [x0]
+                       ; cmp w9, 0
+                       ; b.eq >wrap
+                       ; sub w9, w9, val as u32
+                       ; strb w9, [x0]
+                       ;wrap:
                     )
                 }
-
                 &Bytecode::OUTPUT => {
                     if !cfg!(feature = "no_output") {
                         dynasm!(ops
-                            ; .arch aarch64
-                            ; mov x0, 0 
-                            ; ldrb w0, [x20]
+                            // ; .arch aarch64
+                            // ; str x0, [sp, #-8]!
+                            // ; ldrb w0, [x0]
+                            // ; ldr x9, ->output_char
+                            // ; blr x9
+                            // ; ldr x0, [sp], #8
+                            ; str x1, [sp, #24]
                             ; ldr x9, ->output_char
-                            ; str x30, [sp, #-16]!
                             ; blr x9
-                            ; ldr x30, [sp], #16
-                            ; ret
+                            ; mov x9, x0
+                            ; ldp x0, x1, [sp, #16]
+                            ; ldp x2, x3, [sp]
                         );
                     }
                 }
-                &Bytecode::INPUT => {}
+                &Bytecode::INPUT => {
+                    // TODO: implement input
+                }
                 &Bytecode::LR(_) => {
                     let l = ops.new_dynamic_label();
                     let r = ops.new_dynamic_label();
                     jump_tables.push((l, r));
                     dynasm!(ops
                         ; .arch aarch64
-                        ; ldrb w9, [x20]
+                        ; ldrb w9, [x0]
                         ; cbz w9, => r
                         ;=>l
                     )
@@ -129,7 +111,7 @@ impl JitVM for VirtualMachine {
                     Some((l, r)) => {
                         dynasm!(ops
                             ; .arch aarch64
-                            ; ldrb w9, [x20]
+                            ; ldrb w9, [x0]
                             ; cbnz w9, => l
                             ;=>r
                         )
@@ -143,9 +125,9 @@ impl JitVM for VirtualMachine {
 
         dynasm!(ops
             ; .arch aarch64
-            ; mov x20, x23
-            ; mov x21, x24
-            ; mov x22, x25
+            ; mov x0, 0
+            ; add sp, sp, #32
+            ; ldr x30, [sp], #16
             ; ret
         );
 

@@ -61,7 +61,6 @@ impl IrVM for VirtualMachine {
                         self.pc = val;
                     }
                 }
-
                 &Bytecode::LB(val) => {
                     if self.stack[self.sp] != 0 {
                         self.pc = val;

@@ -2,7 +2,12 @@
 
 use brainfuck_interpreter::{
     lexer::Lexer,
-    vm::{jit::JitVM, VirtualMachine, VM},
+    vm::{
+        // ir::IrVM,
+        jit::JitVM,
+        VirtualMachine,
+        VM,
+    },
 };
 
 fn main() -> anyhow::Result<()> {
