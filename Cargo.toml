@@ -11,6 +11,18 @@ dynasm = "2.0.0"
 dynasmrt = "2.0.0"
 
 
+[[bin]]
+name = "run_ir"
+path = "src/run_ir.rs"
+required-features = ["ir"]
+
+
+[[bin]]
+name = "run_jit"
+path = "src/run_jit.rs"
+required-features = ["jit"]
+
+
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
 
@@ -21,6 +33,11 @@ harness = false
 
 [[bench]]
 name = "ir_vm"
+harness = false
+
+
+[[bench]]
+name = "jit_vm"
 harness = false
 
 
