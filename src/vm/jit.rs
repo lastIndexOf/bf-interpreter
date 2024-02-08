@@ -78,18 +78,10 @@ impl JitVM for VirtualMachine {
                 &Bytecode::OUTPUT => {
                     if !cfg!(feature = "no_output") {
                         dynasm!(ops
-                            // ; .arch aarch64
-                            // ; str x0, [sp, #-8]!
-                            // ; ldrb w0, [x0]
-                            // ; ldr x9, ->output_char
-                            // ; blr x9
-                            // ; ldr x0, [sp], #8
-                            ; str x1, [sp, #24]
+                            ; str x0, [sp, #-16]!
                             ; ldr x9, ->output_char
                             ; blr x9
-                            ; mov x9, x0
-                            ; ldp x0, x1, [sp, #16]
-                            ; ldp x2, x3, [sp]
+                            ; ldr x0, [sp], #16
                         );
                     }
                 }
